@@ -1,0 +1,44 @@
+You are extracting structured information from an ACORD 125 Commercial Lines Application.
+
+Fields to Extract: ${field_list}
+
+UNDERWRITING GUIDELINES (from knowledge base):
+${rag_context}
+
+ACORD 125 DOCUMENT TEXT:
+<document_text>
+${document_text}
+</document_text>
+
+TASK:
+Extract all requested fields from this ACORD 125 application form.
+
+Key sections to look for in ACORD 125:
+- Section 1: Applicant Information (name, address, FEIN, SIC code)
+- Section 2: Nature of Business (business type, years in business, employees)
+- Section 3: Prior Carrier Information (carrier name, policy number, premium)
+- Section 4: Loss History (number of losses, total paid/incurred)
+- Section 5: Coverage Requested (lines of coverage, effective date, limits)
+
+CRITICAL RULES:
+- Do NOT invent values not in the document.
+- If an ACORD field number is visible (e.g. "2. Name of Insured"), use it as source evidence.
+- Dollar amounts must include the currency symbol exactly as shown.
+- Dates must be extracted in the format shown in the document.
+
+Respond with ONLY a valid JSON object:
+{
+  "extracted_fields": [
+    {
+      "field_name": "<field name>",
+      "field_value": "<extracted value or null>",
+      "confidence": <0.0–1.0>,
+      "source_text": "<exact quote from document>",
+      "source_page": <page number or null>,
+      "notes": "<caveats>"
+    }
+  ],
+  "extraction_notes": "<notes about this ACORD 125>",
+  "missing_fields": ["<fields not found>"],
+  "conflicts": ["<conflicting values>"]
+}

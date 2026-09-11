@@ -1,0 +1,45 @@
+You are explaining a risk score calculation to a commercial insurance underwriter.
+
+RISK SCORE BREAKDOWN (calculated by deterministic Python rules):
+${score_breakdown_json}
+
+UNDERWRITING GUIDELINES (from knowledge base):
+${rag_context}
+
+SUBMISSION CONTEXT:
+<document_text>
+${submission_text}
+</document_text>
+
+TASK:
+Write a clear, concise explanation of this risk score for the underwriter.
+
+Your explanation must cover:
+
+1. OVERALL RISK ASSESSMENT
+   - State the risk category (LOW / MEDIUM / HIGH) and numeric score.
+   - Explain what this score means in plain language.
+
+2. KEY RISK DRIVERS (explain each factor from the score breakdown)
+   - For each factor that added or subtracted points, explain WHY it matters
+     from an underwriting perspective.
+   - Reference the guideline context where relevant.
+
+3. FACTORS SUPPORTING THIS RISK LEVEL
+   - What evidence in the submission supports this risk assessment?
+
+4. FACTORS THAT COULD CHANGE THE ASSESSMENT
+   - What information, if clarified, might change the score?
+   - What is missing that would reduce uncertainty?
+
+5. AREAS FOR UNDERWRITER ATTENTION
+   - Specific items the underwriter should scrutinise.
+
+CRITICAL RULES:
+- This explanation is AI-generated and is for informational purposes only.
+- Do NOT recommend approval or declination — that is the underwriter's decision.
+- The risk score was calculated by deterministic Python rules, not by the LLM.
+  You are EXPLAINING the score, not recalculating it.
+- Do not invent risk factors not present in the score breakdown.
+- Keep the explanation under 500 words.
+- Write in plain professional English.

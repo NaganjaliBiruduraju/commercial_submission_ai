@@ -9,3 +9,5 @@ class HealthResponse(InsightBaseModel):
     environment: str
     database: str
     llm_configured: bool
+    ocr_available: bool = False
+    llm_model: str = ""

@@ -141,6 +141,7 @@ def create_app() -> FastAPI:
     async def health_check() -> APIResponse[HealthResponse]:
         db_status = await check_database_connection()
         from app.ingestion.ocr_service import ocr_availability_info
+        from app.ai import llm_is_available
         ocr_info = ocr_availability_info()
         return APIResponse.ok(
             HealthResponse(
@@ -149,6 +150,8 @@ def create_app() -> FastAPI:
                 environment=settings.app_env,
                 database="connected" if db_status else "unreachable",
                 llm_configured=settings.llm_configured,
+                ocr_available=ocr_info.get("available", False),
+                llm_model=settings.llm_model if settings.llm_configured else "",
             )
         )
 
