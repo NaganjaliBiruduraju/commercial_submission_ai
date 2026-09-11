@@ -36,6 +36,7 @@ from app.schemas.submission import (
 from app.services.submission_service import SubmissionService
 from app.services.document_processing_service import DocumentProcessingService
 from app.services.ocr_processing_service import OCRProcessingService
+from app.services.classification_service import ClassificationService
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -393,4 +394,81 @@ async def run_document_ocr(
         "low_confidence_pages": parsed.metadata.get("ocr_low_confidence_pages", []),
         "parser_backend": parsed.parser_backend.value,
         "warnings": parsed.parse_warnings,
+    })
+
+
+# --------------------------------------------------------------------------- #
+# Classification endpoints (Phase 6)
+# --------------------------------------------------------------------------- #
+
+@router.post(
+    "/{submission_id}/classify",
+    response_model=APIResponse[dict],
+    status_code=status.HTTP_200_OK,
+    summary="Classify all parsed documents in a submission",
+    description=(
+        "Runs the classification pipeline on all COMPLETED (parsed) documents. "
+        "Uses deterministic keyword rules first; falls back to Groq LLM for "
+        "ambiguous or low-confidence results. "
+        "Documents in OCR_PROCESSING or FAILED state are skipped."
+    ),
+)
+async def classify_submission_documents(
+    submission_id: UUID,
+    current_user: UnderwriterDep,
+    db: DatabaseDep,
+    use_llm: bool = Query(default=True, description="Enable LLM fallback for ambiguous documents"),
+) -> APIResponse[dict]:
+    svc = ClassificationService(db)
+    results = await svc.classify_all_for_submission(submission_id, use_llm=use_llm)
+    await db.commit()
+
+    return APIResponse.ok({
+        "submission_id": str(submission_id),
+        "documents_classified": len(results),
+        "documents": [
+            {
+                "document_type": r.document_type.value,
+                "confidence": r.confidence,
+                "classified_by": r.classified_by,
+                "reason": r.classification_reason,
+                "alternative_type": r.alternative_type.value if r.alternative_type else None,
+            }
+            for r in results
+        ],
+    })
+
+
+@router.post(
+    "/{submission_id}/documents/{document_id}/classify",
+    response_model=APIResponse[dict],
+    status_code=status.HTTP_200_OK,
+    summary="Classify a single document",
+    description="Reclassify a specific document. Overwrites previous classification result.",
+)
+async def classify_single_document(
+    submission_id: UUID,
+    document_id: UUID,
+    current_user: UnderwriterDep,
+    db: DatabaseDep,
+    use_llm: bool = Query(default=True, description="Enable LLM fallback"),
+) -> APIResponse[dict]:
+    svc = ClassificationService(db)
+    result = await svc.classify_document(document_id, use_llm=use_llm)
+    await db.commit()
+
+    if result is None:
+        return APIResponse.ok({
+            "document_id": str(document_id),
+            "skipped": True,
+            "reason": "Document not ready for classification (needs OCR or failed parsing).",
+        })
+
+    return APIResponse.ok({
+        "document_id": str(document_id),
+        "document_type": result.document_type.value,
+        "confidence": result.confidence,
+        "classified_by": result.classified_by,
+        "reason": result.classification_reason,
+        "alternative_type": result.alternative_type.value if result.alternative_type else None,
     })
