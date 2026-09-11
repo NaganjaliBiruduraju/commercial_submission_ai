@@ -115,7 +115,8 @@ data/raw/
 data/processed/
 data/output/
 # Uploaded user documents (contain PII/sensitive content)
-data/uploads/
+data/uploads/*
+!data/uploads/.gitkeep
 # Local SQLite databases if used in testing
 *.db
 *.sqlite
