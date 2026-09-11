@@ -3,5 +3,12 @@ from app.services.auth_service import AuthService
 from app.services.user_service import UserService
 from app.services.submission_service import SubmissionService
 from app.services.document_processing_service import DocumentProcessingService
+from app.services.ocr_processing_service import OCRProcessingService
 
-__all__ = ["AuthService", "UserService", "SubmissionService", "DocumentProcessingService"]
+__all__ = [
+    "AuthService",
+    "UserService",
+    "SubmissionService",
+    "DocumentProcessingService",
+    "OCRProcessingService",
+]

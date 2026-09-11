@@ -35,6 +35,7 @@ from app.schemas.submission import (
 )
 from app.services.submission_service import SubmissionService
 from app.services.document_processing_service import DocumentProcessingService
+from app.services.ocr_processing_service import OCRProcessingService
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -309,5 +310,87 @@ async def process_single_document(
         "char_count": parsed.total_chars(),
         "parser_backend": parsed.parser_backend.value,
         "parser_version": parsed.parser_version,
+        "warnings": parsed.parse_warnings,
+    })
+
+
+# --------------------------------------------------------------------------- #
+# OCR endpoints (Phase 5)
+# --------------------------------------------------------------------------- #
+
+@router.post(
+    "/{submission_id}/ocr",
+    response_model=APIResponse[dict],
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Run OCR on all documents awaiting OCR in a submission",
+    description=(
+        "Processes all documents with processing_status=OCR_PROCESSING in this submission. "
+        "Scanned PDFs are rendered page-by-page with PyMuPDF then OCR'd with Tesseract. "
+        "Images (JPG/PNG) are OCR'd directly. "
+        "Returns per-document confidence scores and warnings. "
+        "Requires Tesseract to be installed on the server."
+    ),
+)
+async def run_submission_ocr(
+    submission_id: UUID,
+    current_user: UnderwriterDep,
+    db: DatabaseDep,
+    lang: str = Query(default="eng", description="Tesseract language code (e.g. eng, eng+fra)"),
+) -> APIResponse[dict]:
+    svc = OCRProcessingService(db)
+    parsed_docs = await svc.run_ocr_for_submission(submission_id, lang=lang)
+    await db.commit()
+
+    return APIResponse.ok({
+        "submission_id": str(submission_id),
+        "documents_ocred": len(parsed_docs),
+        "ocr_status": OCRProcessingService.ocr_status(),
+        "documents": [
+            {
+                "document_id": pd.document_id,
+                "filename": pd.original_filename,
+                "page_count": pd.page_count,
+                "ocr_complete": pd.metadata.get("ocr_complete", False),
+                "mean_confidence": pd.metadata.get("ocr_mean_confidence"),
+                "total_words": pd.metadata.get("ocr_total_words"),
+                "low_confidence_pages": pd.metadata.get("ocr_low_confidence_pages", []),
+                "warnings": pd.parse_warnings,
+            }
+            for pd in parsed_docs
+        ],
+    })
+
+
+@router.post(
+    "/{submission_id}/documents/{document_id}/ocr",
+    response_model=APIResponse[dict],
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Run OCR on a single document",
+    description=(
+        "Force OCR on a specific document regardless of current processing_status. "
+        "Useful for re-OCRing a document after Tesseract configuration changes."
+    ),
+)
+async def run_document_ocr(
+    submission_id: UUID,
+    document_id: UUID,
+    current_user: UnderwriterDep,
+    db: DatabaseDep,
+    lang: str = Query(default="eng", description="Tesseract language code"),
+) -> APIResponse[dict]:
+    svc = OCRProcessingService(db)
+    parsed = await svc.run_ocr_for_document(document_id, lang=lang)
+    await db.commit()
+
+    return APIResponse.ok({
+        "document_id": parsed.document_id,
+        "filename": parsed.original_filename,
+        "page_count": parsed.page_count,
+        "char_count": parsed.total_chars(),
+        "ocr_complete": parsed.metadata.get("ocr_complete", False),
+        "mean_confidence": parsed.metadata.get("ocr_mean_confidence"),
+        "total_words": parsed.metadata.get("ocr_total_words"),
+        "low_confidence_pages": parsed.metadata.get("ocr_low_confidence_pages", []),
+        "parser_backend": parsed.parser_backend.value,
         "warnings": parsed.parse_warnings,
     })

@@ -140,6 +140,8 @@ def create_app() -> FastAPI:
     )
     async def health_check() -> APIResponse[HealthResponse]:
         db_status = await check_database_connection()
+        from app.ingestion.ocr_service import ocr_availability_info
+        ocr_info = ocr_availability_info()
         return APIResponse.ok(
             HealthResponse(
                 status="ok" if db_status else "degraded",
