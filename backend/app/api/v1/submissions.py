@@ -37,6 +37,7 @@ from app.services.submission_service import SubmissionService
 from app.services.document_processing_service import DocumentProcessingService
 from app.services.ocr_processing_service import OCRProcessingService
 from app.services.classification_service import ClassificationService
+from app.services.extraction_service import ExtractionService
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -471,4 +472,103 @@ async def classify_single_document(
         "classified_by": result.classified_by,
         "reason": result.classification_reason,
         "alternative_type": result.alternative_type.value if result.alternative_type else None,
+    })
+
+
+# --------------------------------------------------------------------------- #
+# Extraction endpoints (Phase 8)
+# --------------------------------------------------------------------------- #
+
+@router.post(
+    "/{submission_id}/extract",
+    response_model=APIResponse[dict],
+    status_code=status.HTTP_200_OK,
+    summary="Extract structured fields from all classified documents",
+    description=(
+        "Runs LLM-based structured extraction on all classified documents. "
+        "Produces ExtractedField + Evidence records in the database. "
+        "Requires GROQ_API_KEY to be configured. "
+        "Documents without a classification or in FAILED state are skipped. "
+        "Re-running soft-deletes previous evidence and replaces extracted fields."
+    ),
+)
+async def extract_submission_fields(
+    submission_id: UUID,
+    current_user: UnderwriterDep,
+    db: DatabaseDep,
+    rag_context: str = Query(
+        default="",
+        description="Optional pre-retrieved RAG context to inject into the extraction prompt",
+    ),
+) -> APIResponse[dict]:
+    svc = ExtractionService(db)
+    outputs = await svc.extract_all_for_submission(submission_id, rag_context=rag_context)
+    await db.commit()
+
+    return APIResponse.ok({
+        "submission_id": str(submission_id),
+        "documents_extracted": len(outputs),
+        "documents": [
+            {
+                "document_id": o.document_id,
+                "document_type": o.document_type.value,
+                "fields_found": o.fields_found,
+                "fields_attempted": o.total_fields_attempted,
+                "missing_fields": o.missing_fields,
+                "conflicts": o.conflicts,
+                "extraction_notes": o.extraction_notes,
+                "llm_model": o.llm_model_used,
+            }
+            for o in outputs
+        ],
+    })
+
+
+@router.post(
+    "/{submission_id}/documents/{document_id}/extract",
+    response_model=APIResponse[dict],
+    status_code=status.HTTP_200_OK,
+    summary="Extract structured fields from a single document",
+    description="Re-extract a specific document. Replaces previous extraction results.",
+)
+async def extract_document_fields(
+    submission_id: UUID,
+    document_id: UUID,
+    current_user: UnderwriterDep,
+    db: DatabaseDep,
+    rag_context: str = Query(default="", description="Optional RAG context"),
+) -> APIResponse[dict]:
+    svc = ExtractionService(db)
+    output = await svc.extract_document(document_id, rag_context=rag_context)
+    await db.commit()
+
+    if output is None:
+        return APIResponse.ok({
+            "document_id": str(document_id),
+            "skipped": True,
+            "reason": "Document not ready for extraction (no classification or no text).",
+        })
+
+    return APIResponse.ok({
+        "document_id": str(document_id),
+        "document_type": output.document_type.value,
+        "fields_found": output.fields_found,
+        "fields_attempted": output.total_fields_attempted,
+        "missing_fields": output.missing_fields,
+        "conflicts": output.conflicts,
+        "extraction_notes": output.extraction_notes,
+        "llm_model": output.llm_model_used,
+        "fields": [
+            {
+                "field_name": f.field_name,
+                "field_label": f.field_label,
+                "value": f.field_value,
+                "confidence": f.confidence,
+                "source_page": f.source_page,
+                "source_section": f.source_section,
+                "match_method": f.match_method,
+            }
+            for f in output.fields
+            if f.field_value is not None
+        ],
     })

@@ -5,6 +5,7 @@ from app.services.submission_service import SubmissionService
 from app.services.document_processing_service import DocumentProcessingService
 from app.services.ocr_processing_service import OCRProcessingService
 from app.services.classification_service import ClassificationService
+from app.services.extraction_service import ExtractionService
 
 __all__ = [
     "AuthService",
@@ -13,4 +14,5 @@ __all__ = [
     "DocumentProcessingService",
     "OCRProcessingService",
     "ClassificationService",
+    "ExtractionService",
 ]
