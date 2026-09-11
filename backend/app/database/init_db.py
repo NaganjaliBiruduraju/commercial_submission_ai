@@ -77,11 +77,30 @@ async def seed_roles(db: AsyncSession) -> None:
     """
     Ensure all required roles exist in the database.
 
-    Roles are created if they don't exist — safe to call multiple times.
-    Implemented fully in Phase 2 when the Role model has real ORM columns.
+    Roles are upserted by name — safe to call on every startup.
+    Does not modify description of existing roles so manual edits are preserved.
     """
-    # Phase 2 implementation — stub in Phase 1
-    logger.info("Role seeding: pending Phase 2 implementation")
+    from sqlalchemy import select
+    from app.models.user import Role
+    from app.core.constants import UserRole
+
+    role_definitions = {
+        UserRole.ADMIN: "Full system access — manage users, knowledge base, and configuration",
+        UserRole.UNDERWRITER: "Review submissions, override extractions, and record decisions",
+        UserRole.REVIEWER: "Read-only access to submissions and reports",
+    }
+
+    for role_enum, description in role_definitions.items():
+        result = await db.execute(
+            select(Role).where(Role.name == role_enum.value)
+        )
+        existing = result.scalar_one_or_none()
+        if existing is None:
+            db.add(Role(name=role_enum.value, description=description))
+            logger.info("Seeded role", role=role_enum.value)
+
+    await db.commit()
+    logger.info("Role seeding complete")
 
 
 async def seed_admin_user(db: AsyncSession) -> None:
@@ -95,11 +114,50 @@ async def seed_admin_user(db: AsyncSession) -> None:
     IMPORTANT: These variables must be set in .env before first startup.
     The password is hashed with bcrypt before storage.
     The plaintext password is NEVER stored or logged.
-
-    Implemented fully in Phase 2 when the User model has real ORM columns.
     """
-    # Phase 2 implementation — stub in Phase 1
-    logger.info("Admin user seeding: pending Phase 2 implementation")
+    from sqlalchemy import select
+    from app.models.user import Role, User
+    from app.core.security import hash_password
+    from app.core.constants import UserRole
+
+    admin_email = os.getenv("INITIAL_ADMIN_EMAIL", "admin@insightai.local")
+    admin_password = os.getenv("INITIAL_ADMIN_PASSWORD", "")
+
+    if not admin_password:
+        logger.warning(
+            "INITIAL_ADMIN_PASSWORD not set — skipping admin user seed. "
+            "Set this environment variable before first startup."
+        )
+        return
+
+    # Check if any admin already exists
+    admin_role_result = await db.execute(
+        select(Role).where(Role.name == UserRole.ADMIN.value)
+    )
+    admin_role = admin_role_result.scalar_one_or_none()
+    if admin_role is None:
+        logger.error("Admin role not found — run seed_roles() first")
+        return
+
+    existing_result = await db.execute(
+        select(User).where(User.email == admin_email.lower().strip())
+    )
+    existing = existing_result.scalar_one_or_none()
+    if existing is not None:
+        logger.info("Admin user already exists — skipping seed", email=admin_email)
+        return
+
+    admin_user = User(
+        email=admin_email.lower().strip(),
+        hashed_password=hash_password(admin_password),
+        full_name="System Administrator",
+        role_id=admin_role.id,
+        is_active=True,
+    )
+    db.add(admin_user)
+    await db.commit()
+    logger.info("Admin user seeded", email=admin_email)
+    # Plaintext password is NOT logged — only the email
 
 
 async def initialize_database() -> None:
