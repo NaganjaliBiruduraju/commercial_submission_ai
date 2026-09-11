@@ -34,6 +34,7 @@ from app.schemas.submission import (
     SubmissionUpdate,
 )
 from app.services.submission_service import SubmissionService
+from app.services.document_processing_service import DocumentProcessingService
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -223,3 +224,90 @@ async def get_document_versions(
     svc = SubmissionService(db)
     versions = await svc.get_document_versions(submission_id, document_id)
     return APIResponse.ok(versions)
+
+
+# --------------------------------------------------------------------------- #
+# Document Processing (Phase 4 — trigger parsing pipeline)
+# --------------------------------------------------------------------------- #
+
+from app.schemas.base import APIResponse as _APIResponse  # alias to avoid re-import shadowing
+
+
+class ProcessingResult(_APIResponse):
+    pass
+
+
+@router.post(
+    "/{submission_id}/process",
+    response_model=APIResponse[dict],
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Trigger document parsing for all pending documents in a submission",
+    description=(
+        "Runs the parsing pipeline (Phase 4) on every PENDING document "
+        "in the submission. "
+        "PDF, DOCX, XLSX, and CSV files are parsed synchronously in a thread pool. "
+        "Image files (JPG/PNG) are marked as needing OCR and processed in Phase 5. "
+        "Returns a summary of processed documents."
+    ),
+)
+async def process_submission_documents(
+    submission_id: UUID,
+    current_user: UnderwriterDep,
+    db: DatabaseDep,
+) -> APIResponse[dict]:
+    svc = DocumentProcessingService(db)
+    parsed_docs = await svc.process_all_pending(submission_id)
+    await db.commit()
+
+    summary = {
+        "submission_id": str(submission_id),
+        "documents_processed": len(parsed_docs),
+        "documents": [
+            {
+                "document_id": pd.document_id,
+                "filename": pd.original_filename,
+                "page_count": pd.page_count,
+                "table_count": len(pd.all_tables),
+                "needs_ocr": pd.needs_ocr,
+                "is_encrypted": pd.is_encrypted,
+                "char_count": pd.total_chars(),
+                "warnings": pd.parse_warnings,
+            }
+            for pd in parsed_docs
+        ],
+    }
+    return APIResponse.ok(summary)
+
+
+@router.post(
+    "/{submission_id}/documents/{document_id}/process",
+    response_model=APIResponse[dict],
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Trigger parsing for a single document",
+    description=(
+        "Re-parse a specific document (useful after fixing a corrupt upload "
+        "or to force reprocessing). Overwrites the cached parsed output."
+    ),
+)
+async def process_single_document(
+    submission_id: UUID,
+    document_id: UUID,
+    current_user: UnderwriterDep,
+    db: DatabaseDep,
+) -> APIResponse[dict]:
+    svc = DocumentProcessingService(db)
+    parsed = await svc.process_document(document_id)
+    await db.commit()
+
+    return APIResponse.ok({
+        "document_id": parsed.document_id,
+        "filename": parsed.original_filename,
+        "page_count": parsed.page_count,
+        "table_count": len(parsed.all_tables),
+        "needs_ocr": parsed.needs_ocr,
+        "is_encrypted": parsed.is_encrypted,
+        "char_count": parsed.total_chars(),
+        "parser_backend": parsed.parser_backend.value,
+        "parser_version": parsed.parser_version,
+        "warnings": parsed.parse_warnings,
+    })

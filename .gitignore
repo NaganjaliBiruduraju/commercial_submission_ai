@@ -112,8 +112,10 @@ frontend/coverage/
 # Raw dataset (large — use git-lfs or download separately)
 data/raw/
 # Processed and output files are generated artifacts
-data/processed/
-data/output/
+data/processed/*
+!data/processed/.gitkeep
+data/output/*
+!data/output/.gitkeep
 # Uploaded user documents (contain PII/sensitive content)
 data/uploads/*
 !data/uploads/.gitkeep
