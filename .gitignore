@@ -1,27 +1,199 @@
-# Python
+# =============================================================================
+# INSIGHT AI — Commercial Submission Intake
+# .gitignore
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# SECRETS — NEVER COMMITTED
+# -----------------------------------------------------------------------------
+.env
+.env.local
+.env.production
+.env.staging
+.env.*.local
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# -----------------------------------------------------------------------------
+# PYTHON
+# -----------------------------------------------------------------------------
 __pycache__/
 *.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+.Python
 
-# Virtual environment
+# Virtual environments
 .venv/
 venv/
 env/
+ENV/
+env.bak/
+venv.bak/
 
-# Secrets
-.env
-.env.*
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
 
-# IDE
-.vscode/
-.idea/
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+pyrightconfig.json
 
-# Generated data
+# Jupyter
+.ipynb_checkpoints
+*.ipynb
+
+# Distribution
+*.manifest
+*.spec
+
+# -----------------------------------------------------------------------------
+# ALEMBIC
+# -----------------------------------------------------------------------------
+# Keep alembic.ini and versions/ — DO commit migration files
+# Do not commit the compiled migration cache
+alembic/__pycache__/
+
+# -----------------------------------------------------------------------------
+# NODE / FRONTEND
+# -----------------------------------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# Build output
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/coverage/
+*.tsbuildinfo
+
+# Vite cache
+.vite/
+
+# TypeScript
+*.js.map
+*.d.ts.map
+
+# -----------------------------------------------------------------------------
+# DATA — LOCAL FILES NOT FOR VERSION CONTROL
+# -----------------------------------------------------------------------------
+# Raw dataset (large — use git-lfs or download separately)
+data/raw/
+# Processed and output files are generated artifacts
 data/processed/
 data/output/
+# Uploaded user documents (contain PII/sensitive content)
+data/uploads/
+# Local SQLite databases if used in testing
+*.db
+*.sqlite
+*.sqlite3
 
-# Raw datasets
-data/raw/
+# -----------------------------------------------------------------------------
+# LOGS
+# -----------------------------------------------------------------------------
+logs/
+*.log
+*.log.*
+npm-debug.log
+yarn-debug.log
 
-# OS
+# -----------------------------------------------------------------------------
+# IDE AND EDITOR
+# -----------------------------------------------------------------------------
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json.example
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# -----------------------------------------------------------------------------
+# OPERATING SYSTEM
+# -----------------------------------------------------------------------------
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+desktop.ini
+
+# -----------------------------------------------------------------------------
+# DOCKER (future use)
+# -----------------------------------------------------------------------------
+.docker/
+docker-compose.override.yml
+
+# -----------------------------------------------------------------------------
+# TEMPORARY / GENERATED FILES
+# -----------------------------------------------------------------------------
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+*.rej
+
+# OCR temporary output
+ocr_tmp/
+*.tiff
+*.tif
+
+# Vector store local files (if using chroma or similar)
+chroma_db/
+vector_store/
+
+# -----------------------------------------------------------------------------
+# TESTING ARTIFACTS
+# -----------------------------------------------------------------------------
+test-results/
+playwright-report/
+test-output/
+
+# -----------------------------------------------------------------------------
+# PRODUCTION BUILD ARTIFACTS
+# -----------------------------------------------------------------------------
+staticfiles/
+media/
