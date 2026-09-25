@@ -1,29 +1,26 @@
 """
-Extraction layer — structured field extraction from parsed documents.
+Extraction layer — prompt-driven field extraction from parsed documents.
 
 Public API:
-  extract_fields(parsed_doc, document_type, rag_context) → ExtractionOutput
-  get_fields_for_type(doc_type)  → list[FieldDefinition]
-  locate_citation(citation, parsed_doc) → EvidenceLocation
+  extract_with_prompt(parsed_doc, prompt) → ExtractionOutput
+  extract_with_default_prompt(parsed_doc, doc_type, rag_context) → ExtractionOutput
 """
-from app.extraction.extractor import ExtractionOutput, ExtractedFieldResult, extract_fields
+from app.extraction.extractor import (
+    ExtractionOutput,
+    extract_with_prompt,
+    extract_with_default_prompt,
+)
 from app.extraction.field_definitions import (
     FieldDefinition,
     get_fields_for_type,
     get_required_fields,
-    get_field_names,
 )
-from app.extraction.evidence_mapper import EvidenceLocation, locate_citation, map_all_citations
 
 __all__ = [
     "ExtractionOutput",
-    "ExtractedFieldResult",
-    "extract_fields",
+    "extract_with_prompt",
+    "extract_with_default_prompt",
     "FieldDefinition",
     "get_fields_for_type",
     "get_required_fields",
-    "get_field_names",
-    "EvidenceLocation",
-    "locate_citation",
-    "map_all_citations",
 ]

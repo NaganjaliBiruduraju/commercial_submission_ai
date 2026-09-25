@@ -15,3 +15,13 @@ __all__ = [
     "DocumentRepository",
     "DocumentVersionRepository",
 ]
+
+from app.repositories.knowledge_repository import (
+    KnowledgeDocumentRepository,
+    KnowledgeChunkRepository,
+)
+
+__all__.extend([
+    "KnowledgeDocumentRepository",
+    "KnowledgeChunkRepository",
+])

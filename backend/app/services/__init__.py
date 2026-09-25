@@ -7,6 +7,7 @@ from app.services.ocr_processing_service import OCRProcessingService
 from app.services.classification_service import ClassificationService
 from app.services.extraction_service import ExtractionService
 from app.services.validation_service import ValidationService
+from app.services.knowledge_service import KnowledgeService
 
 __all__ = [
     "AuthService",
@@ -17,4 +18,5 @@ __all__ = [
     "ClassificationService",
     "ExtractionService",
     "ValidationService",
+    "KnowledgeService",
 ]

@@ -125,6 +125,15 @@ class Settings(BaseSettings):
         default=0.3, alias="LLM_TEMPERATURE_SUMMARIZATION"
     )
     llm_max_tokens: int = Field(default=4096, alias="LLM_MAX_TOKENS")
+
+    # -------------------------------------------------------------------------
+    # Embedding Model (sentence-transformers)
+    # -------------------------------------------------------------------------
+    embedding_model: str = Field(
+        default="sentence-transformers/all-MiniLM-L6-v2",
+        alias="EMBEDDING_MODEL",
+    )
+    embedding_dimension: int = Field(default=384, alias="EMBEDDING_DIMENSION")
     llm_timeout_seconds: int = Field(default=60, alias="LLM_TIMEOUT_SECONDS")
     llm_max_retries: int = Field(default=3, alias="LLM_MAX_RETRIES")
 
@@ -149,6 +158,7 @@ class Settings(BaseSettings):
     # File Upload
     # -------------------------------------------------------------------------
     upload_dir: str = Field(default="./data/uploads", alias="UPLOAD_DIR")
+    knowledge_upload_dir: str = Field(default="./data/knowledge", alias="KNOWLEDGE_UPLOAD_DIR")
     max_upload_size_mb: int = Field(default=50, alias="MAX_UPLOAD_SIZE_MB")
     max_files_per_submission: int = Field(
         default=20, alias="MAX_FILES_PER_SUBMISSION"
