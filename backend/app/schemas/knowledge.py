@@ -35,7 +35,7 @@ class KnowledgeDocumentUpdate(InsightBaseModel):
     description: str | None = None
 
 
-class KnowledgeDocumentResponse(InsightBaseModel, TimestampSchema):
+class KnowledgeDocumentResponse(TimestampSchema, InsightBaseModel):
     """Full knowledge document response."""
     id: uuid.UUID
     title: str
@@ -53,7 +53,7 @@ class KnowledgeDocumentResponse(InsightBaseModel, TimestampSchema):
     approved_by: uuid.UUID | None = None
 
 
-class KnowledgeChunkResponse(InsightBaseModel, TimestampSchema):
+class KnowledgeChunkResponse(TimestampSchema, InsightBaseModel):
     """A single retrieved knowledge chunk with its source metadata."""
     id: uuid.UUID
     document_id: uuid.UUID
@@ -82,3 +82,4 @@ class RAGContext(InsightBaseModel):
     retrieved_chunks: list[KnowledgeChunkResponse] = Field(default_factory=list)
     total_chunks: int = 0
     retrieval_model: str | None = None
+

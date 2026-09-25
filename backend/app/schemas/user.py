@@ -22,7 +22,7 @@ from app.core.constants import UserRole
 # Role schemas
 # ---------------------------------------------------------------------------
 
-class RoleResponse(InsightBaseModel, TimestampSchema):
+class RoleResponse(TimestampSchema, InsightBaseModel):
     id: uuid.UUID
     name: str
     description: str | None = None
@@ -76,7 +76,7 @@ class UserPasswordChange(InsightBaseModel):
         return v
 
 
-class UserResponse(InsightBaseModel, TimestampSchema):
+class UserResponse(TimestampSchema, InsightBaseModel):
     """
     User as returned in API responses.
     NEVER includes hashed_password or any credential fields.
@@ -121,3 +121,4 @@ class TokenResponse(InsightBaseModel):
 
 class RefreshRequest(InsightBaseModel):
     refresh_token: str
+

@@ -20,7 +20,7 @@ from app.schemas.base import InsightBaseModel, TimestampSchema
 # Evidence
 # ---------------------------------------------------------------------------
 
-class EvidenceResponse(InsightBaseModel, TimestampSchema):
+class EvidenceResponse(TimestampSchema, InsightBaseModel):
     """Source provenance for an extracted field."""
     id: uuid.UUID
     extracted_field_id: uuid.UUID
@@ -47,7 +47,7 @@ class EvidenceCreate(InsightBaseModel):
 # Extracted Field
 # ---------------------------------------------------------------------------
 
-class ExtractedFieldResponse(InsightBaseModel, TimestampSchema):
+class ExtractedFieldResponse(TimestampSchema, InsightBaseModel):
     """
     A single extracted fact with its evidence chain.
 
@@ -152,3 +152,4 @@ class SubmissionExtractionSchema(InsightBaseModel):
         description="Any notable issues or ambiguities encountered during extraction",
     )
     extracted_fields: list[ExtractedFieldResponse] = Field(default_factory=list)
+

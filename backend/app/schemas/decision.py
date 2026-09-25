@@ -32,7 +32,7 @@ class UnderwriterDecisionCreate(InsightBaseModel):
     )
 
 
-class UnderwriterDecisionResponse(InsightBaseModel, TimestampSchema):
+class UnderwriterDecisionResponse(TimestampSchema, InsightBaseModel):
     id: uuid.UUID
     submission_id: uuid.UUID
     decision: DecisionStatus
@@ -58,3 +58,4 @@ class AuditLogResponse(InsightBaseModel):
     reason: str | None = None
     submission_id: uuid.UUID | None = None
     request_id: str | None = None
+

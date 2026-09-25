@@ -11,3 +11,4 @@ class HealthResponse(InsightBaseModel):
     llm_configured: bool
     ocr_available: bool = False
     llm_model: str = ""
+

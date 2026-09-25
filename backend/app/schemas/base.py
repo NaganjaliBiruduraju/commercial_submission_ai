@@ -127,3 +127,4 @@ class TimestampSchema(InsightBaseModel):
     """Mixin schema for created_at / updated_at fields."""
     created_at: datetime
     updated_at: datetime
+

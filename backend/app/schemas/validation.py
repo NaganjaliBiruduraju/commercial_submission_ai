@@ -14,7 +14,7 @@ from app.schemas.base import InsightBaseModel, TimestampSchema
 from app.core.constants import ValidationIssueType, ValidationSeverity
 
 
-class ValidationIssueResponse(InsightBaseModel, TimestampSchema):
+class ValidationIssueResponse(TimestampSchema, InsightBaseModel):
     id: uuid.UUID
     submission_id: uuid.UUID
     issue_type: ValidationIssueType
@@ -60,3 +60,4 @@ class ValidationSummary(InsightBaseModel):
     conflict_count: int
     missing_count: int
     issues: list[ValidationIssueResponse] = Field(default_factory=list)
+

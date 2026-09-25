@@ -63,13 +63,11 @@ async def lifespan(app: FastAPI):
     # --- Startup ---
     configure_logging(
         level=settings.log_level,
-        fmt=settings.log_format,
+        log_format=settings.log_format,
         log_file=settings.log_file,
     )
     logger.info(
-        "INSIGHT AI starting",
-        version=settings.app_version,
-        env=settings.app_env,
+        f"INSIGHT AI starting - version={settings.app_version} env={settings.app_env}"
     )
 
     await initialize_database()

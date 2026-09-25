@@ -12,7 +12,7 @@ from fastapi import APIRouter, File, Form, Query, UploadFile, status
 from pydantic import BaseModel
 
 from app.api.deps import AdminDep, DatabaseDep
-from app.api.response import APIResponse
+from app.schemas.base import APIResponse
 from app.core.constants import KnowledgeDocumentStatus
 from app.core.logging import get_logger
 from app.services.knowledge_service import KnowledgeService

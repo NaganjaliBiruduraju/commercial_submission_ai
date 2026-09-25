@@ -35,7 +35,7 @@ class RiskScoreBreakdown(InsightBaseModel):
     )
 
 
-class RiskAssessmentResponse(InsightBaseModel, TimestampSchema):
+class RiskAssessmentResponse(TimestampSchema, InsightBaseModel):
     """Full risk assessment for a submission."""
     id: uuid.UUID
     submission_id: uuid.UUID
@@ -52,3 +52,4 @@ class RiskAssessmentResponse(InsightBaseModel, TimestampSchema):
     ai_recommendation_rationale: str | None = None
     calculated_by_model: str | None = None
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+

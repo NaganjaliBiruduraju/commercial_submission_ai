@@ -31,7 +31,7 @@ class SubmissionUpdate(InsightBaseModel):
     assigned_to: uuid.UUID | None = None
 
 
-class SubmissionSummary(InsightBaseModel, TimestampSchema):
+class SubmissionSummary(TimestampSchema, InsightBaseModel):
     """Compact representation for list views / dashboard table."""
     id: uuid.UUID
     submission_number: str
@@ -47,7 +47,7 @@ class SubmissionSummary(InsightBaseModel, TimestampSchema):
     risk_score: int | None = None
 
 
-class SubmissionResponse(InsightBaseModel, TimestampSchema):
+class SubmissionResponse(TimestampSchema, InsightBaseModel):
     """Full submission detail response."""
     id: uuid.UUID
     submission_number: str
@@ -69,3 +69,5 @@ class SubmissionStatusUpdate(InsightBaseModel):
     """Internal schema for updating submission status through the pipeline."""
     status: SubmissionStatus
     failure_reason: str | None = None
+
+

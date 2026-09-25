@@ -12,7 +12,7 @@ from app.schemas.base import InsightBaseModel, TimestampSchema
 from app.core.constants import DocumentProcessingStatus, DocumentType
 
 
-class DocumentResponse(InsightBaseModel, TimestampSchema):
+class DocumentResponse(TimestampSchema, InsightBaseModel):
     """Full document detail response."""
     id: uuid.UUID
     submission_id: uuid.UUID
@@ -44,7 +44,7 @@ class DocumentSummary(InsightBaseModel):
     file_size_bytes: int
 
 
-class DocumentVersionResponse(InsightBaseModel, TimestampSchema):
+class DocumentVersionResponse(TimestampSchema, InsightBaseModel):
     """Document version history entry."""
     id: uuid.UUID
     document_id: uuid.UUID
@@ -65,3 +65,4 @@ class DocumentClassificationResult(InsightBaseModel):
     classified_by: str = Field(
         description="'deterministic' or LLM model name"
     )
+
