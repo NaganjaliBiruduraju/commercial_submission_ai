@@ -1,0 +1,29 @@
+Analyze this ACORD 130 Workers Compensation application and extract all relevant details.
+
+${rag_context}
+
+ACORD 130 DOCUMENT:
+<document_text>
+${document_text}
+</document_text>
+
+Extract everything relevant to underwriting this workers compensation risk.
+
+OPERATIONS & PAYROLL
+State(s) of operation, total annual payroll, employee count,
+class codes with their associated payroll amounts, type of work performed.
+
+EXPERIENCE & HISTORY
+Experience modification factor (EMF), any large individual claims,
+current carrier and expiring premium.
+
+COVERAGE DETAILS
+Employer liability limits requested, whether officers are included or excluded,
+any USL&H or other special exposures.
+
+SUBCONTRACTORS
+Are subcontractors used? Do they carry their own WC insurance?
+
+For each item: quote the supporting text.
+Flag missing required items, unusual class codes, or a high EMF.
+Structure your response to match what this document actually contains.

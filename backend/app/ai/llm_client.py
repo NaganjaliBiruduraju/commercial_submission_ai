@@ -1,20 +1,23 @@
 """
 Unified LLM client — the single interface all downstream phases use.
 
-Every phase that needs an LLM call (extraction, summarisation, risk
-explanation) imports and calls functions from this module. They never
-call provider.complete() or groq directly.
-
 Public API:
-  complete_text(prompt, ...) → str
-  complete_json(prompt, required_keys, ...) → dict
-  complete_with_schema(prompt, schema_class, ...) → Pydantic model instance
+  complete_freeform(prompt, ...)           → str   ← NEW primary function
+      The LLM returns exactly what the prompt asks for.
+      No schema enforced. Output shape is 100% driven by your prompt.
+      Use this for extraction, summarisation, analysis — anything.
 
-All calls:
-  - Apply output guardrails.
-  - Add AI disclaimer to text responses.
-  - Log token usage for cost tracking.
-  - Return only the content — callers never see LLMResponse directly.
+  complete_text(prompt, ...)               → str   (text + AI disclaimer)
+  complete_json(prompt, required_keys, ...) → dict (JSON mode, optional key check)
+  complete_with_schema(prompt, schema, ...) → Pydantic model
+
+Design principle (updated):
+  The prompt is the contract. Whatever structure you describe in the prompt
+  is what the LLM produces. The client's job is:
+    1. Apply input safety checks (injection, PII scrub, token budget).
+    2. Call the provider.
+    3. Apply output safety checks (forbidden patterns, length cap).
+    4. Return the raw content — no further reshaping.
 """
 from __future__ import annotations
 
@@ -39,6 +42,105 @@ from app.core.constants import ProcessingStage
 logger = get_logger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
+
+
+async def complete_freeform(
+    prompt: str,
+    system_prompt: str | None = None,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+    model: str | None = None,
+    document_id: str | None = None,
+    apply_pii_scrub: bool = True,
+    add_disclaimer: bool = False,
+) -> str:
+    """
+    Send a prompt and return the LLM response exactly as shaped by the prompt.
+
+    This is the PRIMARY extraction/analysis function.
+    The output structure is 100% defined by whatever your prompt says.
+    No JSON schema is enforced. No fixed field list is required.
+
+    The prompt is the contract:
+      - Ask for a paragraph → get a paragraph.
+      - Ask for a markdown table → get a markdown table.
+      - Ask for JSON with your own keys → get that JSON.
+      - Ask for a list of risk factors → get a list.
+
+    Safety checks still run:
+      - Input:  injection detection, PII scrub, token budget enforcement.
+      - Output: forbidden credential/decision patterns, length cap.
+
+    Args:
+        prompt:          Your complete prompt including any output format instructions.
+        system_prompt:   Override the default system prompt (use sparingly).
+        temperature:     Defaults to extraction temperature (0.1).
+        max_tokens:      Defaults to settings.llm_max_tokens.
+        model:           Override model name.
+        document_id:     For injection check logging context.
+        apply_pii_scrub: Set False if you know the prompt has no PII.
+        add_disclaimer:  Prepend AI-generated disclaimer to the response.
+
+    Returns:
+        Raw LLM response string — shaped exactly as your prompt requested.
+
+    Raises:
+        LLMError:                  Provider not configured or call failed.
+        PromptInjectionDetectedError: Injection pattern found in prompt.
+    """
+    settings = get_settings()
+    provider = get_llm_provider()
+
+    if not provider.is_configured():
+        raise LLMError("LLM provider not configured. Set GROQ_API_KEY in .env.")
+
+    # Input guardrails on the prompt itself
+    if apply_pii_scrub:
+        from app.ai.guardrails import sanitise_input
+        prompt, _ = sanitise_input(
+            prompt,
+            max_tokens=max_tokens or settings.llm_max_tokens,
+            document_id=document_id,
+        )
+
+    sys = system_prompt or SYSTEM_PROMPT
+
+    request = LLMRequest(
+        messages=[LLMMessage(role="user", content=prompt)],
+        system_prompt=sys,
+        temperature=temperature if temperature is not None else settings.llm_temperature_extraction,
+        max_tokens=max_tokens or settings.llm_max_tokens,
+        model=model,
+        json_mode=False,  # let the prompt control the output format
+    )
+
+    async with StageLogger(stage=ProcessingStage.LLM_CALL):
+        response: LLMResponse = await provider.complete(request)
+
+    # Output guardrails — check for forbidden patterns, length cap
+    guard = check_output(response.content, expected_type="text")
+    if not guard.passed:
+        raise LLMError(
+            f"LLM output failed safety checks: {'; '.join(guard.violations)}"
+        )
+
+    content = guard.content
+
+    if add_disclaimer:
+        content = add_ai_disclaimer(content)
+
+    if guard.warnings:
+        for w in guard.warnings:
+            logger.warning("LLM output warning", warning=w)
+
+    logger.info(
+        "complete_freeform done",
+        chars_out=len(content),
+        finish_reason=response.finish_reason,
+        tokens=response.total_tokens,
+    )
+
+    return content
 
 
 async def complete_text(

@@ -1,40 +1,32 @@
 """
-ExtractionService — DB-aware structured extraction orchestration.
+ExtractionService — DB-aware prompt-driven extraction orchestration.
 
-Responsibilities:
-  1. Load the Document ORM record and verify it's classified.
-  2. Load ParsedDocument from the processed cache.
-  3. Soft-delete any existing Evidence records for this document
-     (is_active=False) before re-extraction, preserving audit history.
-  4. Call extract_fields() (LLM extraction engine).
-  5. Persist ExtractedField + Evidence records for every result.
-  6. Update Document.processing_status = EXTRACTING → COMPLETED.
-  7. Denormalize key fields to the parent Submission record
-     (applicant_name, annual_revenue, employee_count).
+Calls extract_with_prompt() or extract_with_default_prompt() from the
+extraction engine. The output is whatever the LLM returned for the given
+prompt — no fixed schema is enforced by this service.
 
-Idempotency:
-  Re-extracting a document is safe — old Evidence records are soft-deleted,
-  old ExtractedField records are deleted and replaced. The DB audit log
-  records both the deletion and creation.
+The raw response is persisted as a single ExtractedField record with
+field_name="llm_extraction_output" so it can be retrieved later.
+If the response was valid JSON, each top-level key is also stored as
+an individual ExtractedField for querying.
 
-DB commit policy:
-  The service flushes after each field but commits only once at the end.
-  The caller commits the session (standard pattern across all services).
+Re-extraction is idempotent — previous extraction records for the document
+are replaced on each run.
 """
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import DocumentProcessingStatus, DocumentType
-from app.core.exceptions import DocumentParsingError, LLMError
+from app.core.exceptions import LLMError
 from app.core.logging import StageLogger, get_logger
 from app.core.constants import ProcessingStage
-from app.extraction.extractor import ExtractionOutput, ExtractedFieldResult, extract_fields
-from app.ingestion.models import ParsedDocument
+from app.extraction.extractor import ExtractionOutput, extract_with_default_prompt, extract_with_prompt
 from app.models.extraction import Evidence, ExtractedField
 from app.repositories.document_repository import DocumentRepository
 from app.services.document_processing_service import DocumentProcessingService
@@ -53,34 +45,32 @@ class ExtractionService:
         self,
         document_id: UUID,
         rag_context: str = "",
+        custom_prompt: str | None = None,
     ) -> ExtractionOutput | None:
         """
-        Extract structured fields from a single document.
+        Extract information from a single document.
 
-        Returns None if extraction was skipped (no text, wrong status).
-        Returns ExtractionOutput on success.
-        Raises LLMError if the LLM call fails.
+        If custom_prompt is provided, uses that prompt directly.
+        Otherwise builds the default prompt for the document's classified type.
+
+        Returns None if skipped (no text, no classification, failed status).
+        Returns ExtractionOutput on success — raw_response contains the LLM output.
         """
         doc = await self.doc_repo.get_by_id_or_raise(document_id)
 
-        # Skip if document failed or has no classification
         if doc.processing_status == DocumentProcessingStatus.FAILED.value:
             logger.warning("Skipping extraction for failed document",
                            document_id=str(document_id))
             return None
 
-        if not doc.document_type:
-            logger.warning("Document has no classification — run classify first",
+        if not doc.document_type and not custom_prompt:
+            logger.warning("Document not classified and no custom prompt — skipping",
                            document_id=str(document_id))
             return None
 
-        doc_type = DocumentType(doc.document_type)
+        doc_type = DocumentType(doc.document_type) if doc.document_type else DocumentType.OTHER
 
-        async with StageLogger(
-            stage=ProcessingStage.EXTRACTION,
-            document_id=str(document_id),
-        ):
-            # Mark as extracting
+        async with StageLogger(stage=ProcessingStage.EXTRACTION, document_id=str(document_id)):
             await self.doc_repo.update(doc, {
                 "processing_status": DocumentProcessingStatus.EXTRACTING.value,
             })
@@ -91,47 +81,49 @@ class ExtractionService:
                 document_id=document_id,
             )
             if parsed is None:
-                logger.warning("No parse cache — running parser first",
-                               document_id=str(document_id))
+                logger.info("No parse cache — running parser first",
+                            document_id=str(document_id))
                 parsed = await self._parse_svc.process_document(document_id)
                 doc = await self.doc_repo.get_by_id_or_raise(document_id)
 
             if not parsed.full_text or not parsed.full_text.strip():
-                logger.warning("Document has no extractable text",
-                               document_id=str(document_id))
+                logger.warning("No text to extract from", document_id=str(document_id))
                 await self.doc_repo.update(doc, {
                     "processing_status": DocumentProcessingStatus.COMPLETED.value,
                 })
                 return None
 
-            # Soft-delete existing evidence + hard-delete existing extracted fields
-            await self._invalidate_previous_extraction(document_id)
+            # Delete previous extraction records
+            await self._clear_previous(document_id)
 
-            # Run LLM extraction
+            # Run extraction
             try:
-                output = await extract_fields(
-                    parsed_doc=parsed,
-                    document_type=doc_type,
-                    rag_context=rag_context,
-                )
+                if custom_prompt:
+                    output = await extract_with_prompt(
+                        parsed_doc=parsed,
+                        prompt=custom_prompt,
+                        document_type=doc_type,
+                    )
+                else:
+                    output = await extract_with_default_prompt(
+                        parsed_doc=parsed,
+                        document_type=doc_type,
+                        rag_context=rag_context,
+                    )
             except LLMError as exc:
                 await self.doc_repo.update(doc, {
                     "processing_status": DocumentProcessingStatus.FAILED.value,
-                    "failure_reason": f"Extraction LLM error: {exc}"[:2000],
+                    "failure_reason": f"Extraction error: {exc}"[:2000],
                 })
                 raise
 
-            # Persist fields + evidence
-            await self._persist_extraction(
-                output=output,
-                document_id=document_id,
-                submission_id=doc.submission_id,
-            )
+            # Persist the output
+            await self._persist(output, document_id, doc.submission_id, doc.original_filename)
 
-            # Denormalize key fields to Submission
-            await self._denormalize_to_submission(doc.submission_id, output)
+            # Denormalize applicant_name to Submission if extractable
+            if output.parsed_data and isinstance(output.parsed_data, dict):
+                await self._denormalize(doc.submission_id, output.parsed_data)
 
-            # Mark complete
             await self.doc_repo.update(doc, {
                 "processing_status": DocumentProcessingStatus.COMPLETED.value,
                 "failure_reason": None,
@@ -140,49 +132,42 @@ class ExtractionService:
             logger.info(
                 "Extraction persisted",
                 document_id=str(document_id),
-                fields_found=output.fields_found,
-                fields_total=output.total_fields_attempted,
-                missing=len(output.missing_fields),
+                response_chars=len(output.raw_response),
+                is_json=output.parsed_data is not None,
             )
-
             return output
 
     async def extract_all_for_submission(
         self,
         submission_id: UUID,
         rag_context: str = "",
+        custom_prompt: str | None = None,
     ) -> list[ExtractionOutput]:
         """
-        Extract fields from all classified documents in a submission.
-        Skips unclassified, failed, or image-only documents.
+        Extract from all classified documents in a submission.
+        Skips image-only documents and failed documents.
         """
         docs = await self.doc_repo.get_by_submission(submission_id, current_only=True)
+        skip_types = {DocumentType.EVIDENCE_PHOTO.value, DocumentType.IDENTITY_DOCUMENT.value}
         extractable = [
             d for d in docs
-            if d.document_type and d.document_type not in (
-                DocumentType.EVIDENCE_PHOTO.value,
-                DocumentType.IDENTITY_DOCUMENT.value,
-            ) and d.processing_status != DocumentProcessingStatus.FAILED.value
+            if d.processing_status != DocumentProcessingStatus.FAILED.value
+            and (d.document_type not in skip_types or custom_prompt)
         ]
-
-        if not extractable:
-            logger.info("No extractable documents in submission",
-                        submission_id=str(submission_id))
-            return []
-
-        logger.info("Extracting fields for submission",
-                    submission_id=str(submission_id), count=len(extractable))
 
         results: list[ExtractionOutput] = []
         for doc in extractable:
             try:
-                out = await self.extract_document(doc.id, rag_context=rag_context)
+                out = await self.extract_document(
+                    doc.id,
+                    rag_context=rag_context,
+                    custom_prompt=custom_prompt,
+                )
                 if out:
                     results.append(out)
             except Exception as exc:
                 logger.error("Extraction failed for document",
                              document_id=str(doc.id),
-                             filename=doc.original_filename,
                              error=str(exc))
         return results
 
@@ -190,112 +175,93 @@ class ExtractionService:
     # Private helpers
     # ---------------------------------------------------------------------- #
 
-    async def _invalidate_previous_extraction(self, document_id: UUID) -> None:
-        """
-        Soft-delete existing Evidence records and hard-delete ExtractedFields
-        for this document so a re-extraction starts fresh.
-        """
-        now = datetime.now(tz=timezone.utc)
-
+    async def _clear_previous(self, document_id: UUID) -> None:
+        """Remove previous extraction records for this document."""
         # Soft-delete evidence
+        from sqlalchemy import update as sa_update
         await self.db.execute(
-            update(Evidence)
+            sa_update(Evidence)
             .where(Evidence.document_id == document_id)
-            .where(Evidence.is_active == True)  # noqa: E712
             .values(is_active=False)
         )
-
-        # Hard-delete extracted fields (evidence cascade-deletes via FK)
-        existing_fields = await self.db.execute(
-            select(ExtractedField)
-            .where(ExtractedField.document_id == document_id)
+        # Hard-delete extracted fields
+        existing = await self.db.execute(
+            select(ExtractedField).where(ExtractedField.document_id == document_id)
         )
-        for ef in existing_fields.scalars().all():
+        for ef in existing.scalars().all():
             await self.db.delete(ef)
-
         await self.db.flush()
 
-    async def _persist_extraction(
+    async def _persist(
         self,
         output: ExtractionOutput,
         document_id: UUID,
         submission_id: UUID,
+        original_filename: str,
     ) -> None:
-        """Create ExtractedField and Evidence records for each result."""
+        """
+        Persist extraction output to DB.
+
+        Always saves the full raw response as a single field.
+        If the response was JSON, also saves each top-level key individually.
+        """
         now = datetime.now(tz=timezone.utc)
 
-        for result in output.fields:
-            # Wrap scalar values in {"value": ...} for JSON column storage
-            stored_value = _wrap_value(result.field_value)
+        # 1. Raw response field — always saved
+        raw_ef = ExtractedField(
+            submission_id=submission_id,
+            document_id=document_id,
+            field_name="llm_extraction_output",
+            field_label="LLM Extraction Output",
+            field_value={"raw": output.raw_response},
+            confidence=1.0,
+            is_overridden=False,
+        )
+        self.db.add(raw_ef)
+        await self.db.flush()
 
-            ef = ExtractedField(
-                submission_id=submission_id,
-                document_id=document_id,
-                field_name=result.field_name,
-                field_label=result.field_label,
-                field_value=stored_value,
-                confidence=result.confidence,
-                is_overridden=False,
-                created_by=None,
-            )
-            self.db.add(ef)
-            await self.db.flush()  # get ef.id
+        # Evidence record pointing to the whole document
+        ev = Evidence(
+            extracted_field_id=raw_ef.id,
+            document_id=document_id,
+            document_name=original_filename,
+            page_number=None,
+            section=None,
+            source_text=output.prompt_used[:500],
+            extraction_timestamp=now,
+            is_active=True,
+        )
+        self.db.add(ev)
 
-            # Only create evidence if there's a citation
-            if result.source_text:
-                ev = Evidence(
-                    extracted_field_id=ef.id,
+        # 2. If JSON, save each top-level key as its own field
+        if isinstance(output.parsed_data, dict):
+            for key, value in output.parsed_data.items():
+                if key == "llm_extraction_output":
+                    continue
+                ef = ExtractedField(
+                    submission_id=submission_id,
                     document_id=document_id,
-                    document_name=output.document_id,  # original_filename set by service
-                    page_number=result.source_page,
-                    section=result.source_section,
-                    source_text=result.source_text[:2000],
-                    extraction_timestamp=result.extraction_timestamp,
-                    is_active=True,
+                    field_name=str(key),
+                    field_label=str(key).replace("_", " ").title(),
+                    field_value={"value": value} if not isinstance(value, dict) else value,
+                    confidence=0.9,
+                    is_overridden=False,
                 )
-                self.db.add(ev)
+                self.db.add(ef)
 
         await self.db.flush()
 
-    async def _denormalize_to_submission(
-        self,
-        submission_id: UUID,
-        output: ExtractionOutput,
-    ) -> None:
-        """
-        Copy key fields to the Submission row for quick dashboard display.
-
-        Only updates if the current submission value is None (don't overwrite
-        if a later document already set it).
-        """
+    async def _denormalize(self, submission_id: UUID, parsed: dict) -> None:
+        """Copy applicant_name to Submission row if not already set."""
         from app.models.submission import Submission
-        from sqlalchemy import select
-
         result = await self.db.execute(
             select(Submission).where(Submission.id == submission_id)
         )
         sub = result.scalar_one_or_none()
-        if sub is None:
-            return
-
-        field_map = {r.field_name: r.field_value for r in output.fields if r.field_value is not None}
-
-        updates: dict = {}
-        if sub.applicant_name is None and "applicant_name" in field_map:
-            updates["applicant_name"] = str(field_map["applicant_name"])
-
-        if updates:
-            for k, v in updates.items():
-                setattr(sub, k, v)
-            await self.db.flush()
-
-
-def _wrap_value(value: object) -> dict | None:
-    """Wrap a scalar value in {"value": ...} for JSON column storage."""
-    if value is None:
-        return None
-    if isinstance(value, dict):
-        return value
-    if isinstance(value, list):
-        return {"value": value}
-    return {"value": value}
+        if sub and sub.applicant_name is None:
+            for key in ("applicant_name", "named_insured", "insured_name"):
+                val = parsed.get(key)
+                if val:
+                    sub.applicant_name = str(val)[:255]
+                    await self.db.flush()
+                    break

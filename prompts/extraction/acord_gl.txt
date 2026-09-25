@@ -1,0 +1,29 @@
+Analyze this ACORD 126 General Liability Section and extract all coverage and risk details.
+
+${rag_context}
+
+ACORD 126 DOCUMENT:
+<document_text>
+${document_text}
+</document_text>
+
+Extract and present the following — only what is present in the document:
+
+COVERAGE LIMITS REQUESTED
+Each occurrence, general aggregate, products/completed operations aggregate,
+personal & advertising injury, damage to rented premises, medical payments.
+
+RATING BASIS
+Annual revenue / gross sales, square footage, payroll (if applicable),
+number of employees, subcontracted work cost.
+
+OPERATIONS
+Description of business operations, products sold or services performed,
+any unusual or high-hazard activities.
+
+ADDITIONAL COVERAGES
+Additional insureds, waivers of subrogation, primary/non-contributory status.
+
+For each item: quote the supporting text from the form.
+Note anything missing, unusual, or that needs broker clarification.
+Organize your response clearly — let the document guide the structure.

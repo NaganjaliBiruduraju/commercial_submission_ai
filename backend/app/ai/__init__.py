@@ -24,6 +24,7 @@ Prompt building:
   build_risk_explanation_prompt(...) → str
 """
 from app.ai.llm_client import (
+    complete_freeform,
     complete_text,
     complete_json,
     complete_with_schema,
@@ -59,6 +60,7 @@ from app.ai.prompt_builder import (
 
 __all__ = [
     # LLM client
+    "complete_freeform",
     "complete_text",
     "complete_json",
     "complete_with_schema",

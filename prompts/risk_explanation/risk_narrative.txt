@@ -1,9 +1,9 @@
-You are explaining a risk score calculation to a commercial insurance underwriter.
+Explain the risk score for this commercial insurance submission to an underwriter.
 
-RISK SCORE BREAKDOWN (calculated by deterministic Python rules):
+RISK SCORE BREAKDOWN (calculated by deterministic rules — not by AI):
 ${score_breakdown_json}
 
-UNDERWRITING GUIDELINES (from knowledge base):
+UNDERWRITING GUIDELINES:
 ${rag_context}
 
 SUBMISSION CONTEXT:
@@ -11,35 +11,19 @@ SUBMISSION CONTEXT:
 ${submission_text}
 </document_text>
 
-TASK:
-Write a clear, concise explanation of this risk score for the underwriter.
+The score was calculated by Python rules — your job is to explain it in plain language.
 
-Your explanation must cover:
+Tell the underwriter:
+- What the score means and how serious it is
+- Which factors drove the score up or down and why each one matters
+- What evidence from the submission supports this assessment
+- What information gaps increase uncertainty
+- What the underwriter should look at most carefully
 
-1. OVERALL RISK ASSESSMENT
-   - State the risk category (LOW / MEDIUM / HIGH) and numeric score.
-   - Explain what this score means in plain language.
+Write it conversationally — like a senior underwriter explaining to a junior one.
+Be honest about uncertainty. Do not soften or inflate the assessment.
+Do not recommend approval or declination. That decision belongs to the underwriter.
 
-2. KEY RISK DRIVERS (explain each factor from the score breakdown)
-   - For each factor that added or subtracted points, explain WHY it matters
-     from an underwriting perspective.
-   - Reference the guideline context where relevant.
-
-3. FACTORS SUPPORTING THIS RISK LEVEL
-   - What evidence in the submission supports this risk assessment?
-
-4. FACTORS THAT COULD CHANGE THE ASSESSMENT
-   - What information, if clarified, might change the score?
-   - What is missing that would reduce uncertainty?
-
-5. AREAS FOR UNDERWRITER ATTENTION
-   - Specific items the underwriter should scrutinise.
-
-CRITICAL RULES:
-- This explanation is AI-generated and is for informational purposes only.
-- Do NOT recommend approval or declination — that is the underwriter's decision.
-- The risk score was calculated by deterministic Python rules, not by the LLM.
-  You are EXPLAINING the score, not recalculating it.
-- Do not invent risk factors not present in the score breakdown.
-- Keep the explanation under 500 words.
-- Write in plain professional English.
+Let the actual risk factors determine the length and emphasis of your explanation.
+A high-risk submission with many factors needs a thorough explanation.
+A clean low-risk submission can be brief.

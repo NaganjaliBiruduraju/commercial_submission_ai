@@ -164,13 +164,25 @@ def build_extraction_prompt(
     document_id: str | None = None,
 ) -> str:
     """
-    Build the structured extraction prompt for a classified document.
+    Build the extraction prompt for a classified document.
 
-    Tries to load a type-specific template first
-    (e.g. prompts/extraction/acord_application.txt).
+    Tries a type-specific template first (e.g. prompts/extraction/acord_gl.txt).
     Falls back to prompts/extraction/generic.txt.
+    The template defines the output format — no schema is imposed by code.
     """
-    template_name = document_type.lower()
+    # Map DocumentType values to template names
+    _TYPE_TEMPLATE_MAP: dict[str, str] = {
+        "ACORD_APPLICATION": "acord_application",
+        "ACORD_GL": "acord_gl",
+        "ACORD_PROPERTY": "acord_property",
+        "ACORD_AUTO": "acord_auto",
+        "ACORD_WORKERS_COMP": "acord_workers_comp",
+        "ACORD_UMBRELLA": "acord_umbrella",
+        "LOSS_RUN": "loss_run",
+        "FINANCIAL_STATEMENT": "financial_statement",
+        "BROKER_EMAIL": "broker_email",
+    }
+    template_name = _TYPE_TEMPLATE_MAP.get(document_type.upper(), document_type.lower())
     try:
         builder = PromptBuilder("extraction", template_name)
     except FileNotFoundError:

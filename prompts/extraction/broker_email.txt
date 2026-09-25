@@ -1,0 +1,35 @@
+Analyze this broker email and extract all submission-relevant information.
+
+${rag_context}
+
+BROKER EMAIL:
+<document_text>
+${document_text}
+</document_text>
+
+This is a broker communication. Extract everything that tells you about
+the submission, the insured, and what the broker is asking for.
+
+BROKER DETAILS
+Who sent this? What agency? What is their contact information?
+
+INSURED / APPLICANT
+What business is being submitted? Any details about the risk?
+
+COVERAGE REQUEST
+What coverages are being requested? Any specific limits or requirements?
+Desired effective date?
+
+SPECIAL INSTRUCTIONS
+Anything the broker specifically flagged — rush requests, incumbent carrier,
+special conditions, prior declinations, unusual exposures?
+
+ATTACHED DOCUMENTS
+Does the email mention any attached forms or supporting documents?
+
+TONE & CONTEXT
+Is this a new business submission, a renewal, a remarketing effort?
+Is the broker providing context about why they're shopping this risk?
+
+Summarize the key points clearly. Include any direct quotes that are
+particularly important for the underwriter to see.

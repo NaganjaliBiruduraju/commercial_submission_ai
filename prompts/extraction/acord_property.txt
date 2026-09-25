@@ -1,0 +1,33 @@
+Analyze this ACORD 140 Property Section and extract all building and coverage details.
+
+${rag_context}
+
+ACORD 140 DOCUMENT:
+<document_text>
+${document_text}
+</document_text>
+
+Extract everything relevant to underwriting this property risk.
+Only report what is actually stated in the document.
+
+LOCATION & BUILDING
+Address, construction type (frame / masonry / fire resistive), year built,
+square footage, number of stories, occupancy/use.
+
+BUILDING CHARACTERISTICS
+Roof type, roof year, sprinkler system, alarm system, any recent renovations.
+
+INSURED VALUES
+Building replacement cost, business personal property value,
+business income / extra expense limit.
+
+COVERAGE DETAILS
+Deductible, coinsurance percentage, any special coverages or endorsements,
+causes of loss form (basic / broad / special).
+
+ADDITIONAL LOCATIONS
+If multiple locations are scheduled, list each with its address and values.
+
+For each item: quote the supporting text.
+Flag anything that stands out as a risk concern or that needs clarification.
+Use a clear structure suited to the content of this specific document.

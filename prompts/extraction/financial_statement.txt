@@ -1,0 +1,33 @@
+Analyze this financial statement and extract the key financial indicators.
+
+${rag_context}
+
+FINANCIAL DOCUMENT:
+<document_text>
+${document_text}
+</document_text>
+
+Extract the financial data that matters for underwriting — specifically what it reveals
+about the business's size, stability, and ability to sustain operations.
+
+REVENUE & PROFITABILITY
+Total revenue / net sales, gross profit, net income or net loss.
+Any significant year-over-year changes if multiple periods are shown.
+
+BALANCE SHEET
+Total assets, total liabilities, total equity / net worth.
+Cash and equivalents, accounts receivable, long-term debt.
+
+KEY RATIOS (calculate if data allows)
+Debt-to-equity ratio, current ratio if balance sheet is present.
+
+PERIOD & AUDIT STATUS
+What fiscal year does this cover? Is it audited or unaudited?
+Who prepared it (CPA firm, internal)?
+
+OBSERVATIONS
+Does the financial picture suggest a healthy, growing, stable, or struggling business?
+Any figures that look unusual or inconsistent?
+
+Quote key numbers exactly as they appear. Note the currency and any
+"in thousands" or "in millions" notation in the document.

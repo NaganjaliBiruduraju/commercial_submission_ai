@@ -1,65 +1,33 @@
-You are extracting structured claims history from a Loss Run report.
+Analyze this loss run report and extract the complete claims history.
 
-Fields to Extract: ${field_list}
-
-UNDERWRITING GUIDELINES (from knowledge base):
 ${rag_context}
 
-LOSS RUN DOCUMENT TEXT:
+LOSS RUN DOCUMENT:
 <document_text>
 ${document_text}
 </document_text>
 
-TASK:
-Extract all claims from this loss run report.
+Read through all claims and present a clear picture of this insured's loss history.
 
+SUMMARY
+How many claims total? What is the total paid? Total incurred? Policy period covered?
+Prior carrier name? Any trends worth noting?
+
+INDIVIDUAL CLAIMS
 For each claim, extract:
-- Claim number
+- Claim number (if shown)
 - Date of loss
-- Date reported
-- Type of loss / cause of loss
-- Paid amount (dollars)
-- Reserve amount (dollars)
-- Total incurred (paid + reserve)
-- Status (open / closed / denied / reserved)
-- Claimant name (if present)
-- Brief description of the loss
+- Cause / type of loss
+- Paid amount
+- Reserve amount
+- Status (open / closed / denied)
+- Brief description
 
-Also extract summary statistics:
-- Total number of claims
-- Total paid across all claims
-- Total incurred across all claims
-- Policy period covered
-- Prior carrier name (if shown)
+NOTABLE OBSERVATIONS
+Are there any large losses? Repeat claim types? Open reserves that could develop?
+Anything that would concern an underwriter?
 
-CRITICAL RULES:
-- Extract ALL claims shown, not just the first few.
-- If amounts are in thousands (e.g., "$50K"), convert to full dollar amounts.
-- Do NOT invent claim numbers or amounts not present in the document.
-
-Respond with ONLY a valid JSON object:
-{
-  "claims": [
-    {
-      "claim_number": "<claim number or null>",
-      "date_of_loss": "<date or null>",
-      "date_reported": "<date or null>",
-      "cause_of_loss": "<cause or null>",
-      "paid_amount": <number or null>,
-      "reserve_amount": <number or null>,
-      "total_incurred": <number or null>,
-      "status": "<open|closed|denied|reserved|null>",
-      "description": "<brief description or null>",
-      "source_text": "<quote from document>"
-    }
-  ],
-  "summary": {
-    "total_claims": <number>,
-    "total_paid": <number or null>,
-    "total_incurred": <number or null>,
-    "policy_period": "<period or null>",
-    "prior_carrier": "<carrier name or null>"
-  },
-  "extraction_notes": "<notes>",
-  "missing_fields": ["<fields not found>"]
-}
+Present the claims in a clear format — a table if there are many claims,
+prose if there are only a few. Let the volume and nature of the claims
+guide how you organize the response.
+Quote dollar amounts exactly as shown in the document.

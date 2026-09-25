@@ -1,59 +1,33 @@
-You are assisting a commercial insurance underwriter by summarising a submission.
+You are preparing a submission summary for a commercial insurance underwriter.
 
 Submission Reference: ${submission_number}
 
-EXTRACTED FIELDS (structured data from documents):
+EXTRACTED INFORMATION FROM DOCUMENTS:
 ${extracted_fields_json}
 
-VALIDATION ISSUES (conflicts, missing info, flags):
+VALIDATION ISSUES FOUND:
 ${validation_issues_json}
 
 UNDERWRITING GUIDELINES (from knowledge base):
 ${rag_context}
 
-DOCUMENT TEXT (for additional context):
+SUPPORTING DOCUMENT TEXT:
 <document_text>
 ${document_text}
 </document_text>
 
-TASK:
-Write a concise underwriter summary for this commercial insurance submission.
+Write a submission summary that gives the underwriter a clear, complete picture
+of this risk in the shortest time possible.
 
-The summary must include:
+Cover what matters: who the applicant is, what they do, what coverage they want,
+what their loss history looks like, what's missing or concerning, and what the
+underwriter should focus on.
 
-1. APPLICANT OVERVIEW (2–3 sentences)
-   - Business name, type, industry, years in operation
-   - Primary location and number of locations
+Do not follow a rigid template. Let the actual content of this submission
+determine what deserves emphasis. A submission with a complex loss history
+needs more space on losses. A submission with missing ACORD forms needs
+to highlight that prominently. A clean, straightforward risk can be shorter.
 
-2. COVERAGE REQUESTED
-   - Lines of coverage requested
-   - Key limits and deductibles
-   - Effective date
-
-3. RISK HIGHLIGHTS (bullet points)
-   - Key risk factors identified (positive and negative)
-   - Industry-specific considerations
-   - Any red flags or concerns
-
-4. LOSS HISTORY SUMMARY
-   - Number of claims in the past 3–5 years
-   - Total incurred losses
-   - Notable claim types
-
-5. MISSING OR CONFLICTING INFORMATION
-   - Fields missing from the submission
-   - Any conflicting values between documents
-   - Items requiring clarification from the broker
-
-6. RECOMMENDED NEXT STEPS (for the underwriter's consideration)
-   - Items to verify
-   - Additional information to request
-
-CRITICAL RULES:
-- This is a summary for a human underwriter — do NOT make any approval/decline decision.
-- Label all AI-generated insights clearly.
-- Do not present inferences as facts.
-- Keep the summary under 600 words.
-- If a section has no relevant information, write "No information available."
-
-Write the summary in plain professional English. Do not use markdown headers — use numbered sections.
+Write in plain professional English. Be direct. Flag concerns clearly.
+Do not make an approval or decline recommendation — that is the underwriter's call.
+Label this as AI-generated analysis at the start.

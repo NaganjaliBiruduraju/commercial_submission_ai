@@ -38,6 +38,7 @@ from app.services.document_processing_service import DocumentProcessingService
 from app.services.ocr_processing_service import OCRProcessingService
 from app.services.classification_service import ClassificationService
 from app.services.extraction_service import ExtractionService
+from app.services.validation_service import ValidationService
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -571,4 +572,101 @@ async def extract_document_fields(
             for f in output.fields
             if f.field_value is not None
         ],
+    })
+
+
+# --------------------------------------------------------------------------- #
+# Validation endpoints (Phase 9)
+# --------------------------------------------------------------------------- #
+
+@router.post(
+    "/{submission_id}/validate",
+    response_model=APIResponse[dict],
+    status_code=status.HTTP_200_OK,
+    summary="Run deterministic validation on a submission",
+    description=(
+        "Runs all deterministic Python checks — no LLM. "
+        "Detects: field-level invalid values, cross-field inconsistencies, "
+        "conflicting values across documents, missing required fields, "
+        "missing coverage forms, and submission-level rules (ACORD 125 present, etc.). "
+        "Replaces previous unresolved issues. Resolved issues are preserved. "
+        "Advances submission status to READY_FOR_REVIEW if no errors found."
+    ),
+)
+async def validate_submission(
+    submission_id: UUID,
+    current_user: ReviewerDep,
+    db: DatabaseDep,
+) -> APIResponse[dict]:
+    svc = ValidationService(db)
+    report = await svc.validate_submission(submission_id)
+    await db.commit()
+
+    return APIResponse.ok({
+        "submission_id": str(submission_id),
+        "total_issues": report.total_issues,
+        "errors": report.error_count,
+        "warnings": report.warning_count,
+        "conflicts": report.conflict_count,
+        "missing": report.missing_count,
+        "invalid": report.invalid_count,
+        "status": "READY_FOR_REVIEW" if report.error_count == 0 else "VALIDATING_DATA",
+    })
+
+
+@router.get(
+    "/{submission_id}/validation-issues",
+    response_model=APIResponse[dict],
+    status_code=status.HTTP_200_OK,
+    summary="Get all validation issues for a submission",
+)
+async def get_validation_issues(
+    submission_id: UUID,
+    current_user: ReviewerDep,
+    db: DatabaseDep,
+) -> APIResponse[dict]:
+    svc = ValidationService(db)
+    summary = await svc.get_validation_summary(submission_id)
+    return APIResponse.ok(summary)
+
+
+@router.post(
+    "/{submission_id}/validation-issues/{issue_id}/resolve",
+    response_model=APIResponse[dict],
+    status_code=status.HTTP_200_OK,
+    summary="Resolve a validation issue",
+    description="Mark a validation issue as resolved with a note explaining the resolution.",
+)
+async def resolve_validation_issue(
+    submission_id: UUID,
+    issue_id: UUID,
+    current_user: UnderwriterDep,
+    db: DatabaseDep,
+    resolution_note: str = Query(..., min_length=10, description="Explain how this issue was resolved"),
+) -> APIResponse[dict]:
+    from datetime import datetime, timezone
+    from sqlalchemy import select
+    from app.models.validation import ValidationIssue
+
+    result = await db.execute(
+        select(ValidationIssue).where(
+            ValidationIssue.id == issue_id,
+            ValidationIssue.submission_id == submission_id,
+        )
+    )
+    issue = result.scalar_one_or_none()
+    if issue is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Validation issue not found")
+
+    issue.is_resolved = True
+    issue.resolved_by = current_user.id
+    issue.resolved_at = datetime.now(tz=timezone.utc)
+    issue.resolution_note = resolution_note
+    await db.commit()
+
+    return APIResponse.ok({
+        "issue_id": str(issue_id),
+        "resolved": True,
+        "resolved_by": str(current_user.id),
     })
