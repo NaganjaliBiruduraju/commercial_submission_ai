@@ -97,7 +97,7 @@ async def seed_roles(db: AsyncSession) -> None:
         existing = result.scalar_one_or_none()
         if existing is None:
             db.add(Role(name=role_enum.value, description=description))
-            logger.info("Seeded role", role=role_enum.value)
+            logger.info(f"Seeded role: {role_enum.value}")
 
     await db.commit()
     logger.info("Role seeding complete")
@@ -144,7 +144,7 @@ async def seed_admin_user(db: AsyncSession) -> None:
     )
     existing = existing_result.scalar_one_or_none()
     if existing is not None:
-        logger.info("Admin user already exists — skipping seed", email=admin_email)
+        logger.info(f"Admin user already exists — skipping seed: {admin_email}")
         return
 
     admin_user = User(
@@ -156,7 +156,7 @@ async def seed_admin_user(db: AsyncSession) -> None:
     )
     db.add(admin_user)
     await db.commit()
-    logger.info("Admin user seeded", email=admin_email)
+    logger.info(f"Admin user seeded: {admin_email}")
     # Plaintext password is NOT logged — only the email
 
 

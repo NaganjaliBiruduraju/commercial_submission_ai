@@ -78,7 +78,7 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("Database connection verified")
 
-    logger.info("INSIGHT AI ready", host=settings.app_host, port=settings.app_port)
+    logger.info(f"INSIGHT AI ready on {settings.app_host}:{settings.app_port}")
 
     yield  # --- Application runs here ---
 
