@@ -1,172 +1,341 @@
-# INSIGHT AI — Commercial Submission Intelligence
+# Commercial Submission AI
 
-> Enterprise AI-powered insurance document intelligence and underwriting support system.
+> AI-powered insurance document intelligence and underwriting support system
 
----
+## Overview
 
-## What This Is
+A comprehensive, production-ready platform that processes commercial insurance submissions through a 13-phase AI pipeline:
 
-INSIGHT AI transforms unstructured commercial insurance submission documents into structured,
-explainable underwriting insights. It supports — but never replaces — human underwriting decisions.
+- **Document Ingestion & Parsing**: PDF, DOCX, XLSX, images
+- **OCR & Classification**: Tesseract OCR + LLM-powered document type detection
+- **AI Extraction**: Prompt-driven field extraction with Groq LLM
+- **Data Validation**: 15+ validation rules + conflict detection
+- **Knowledge Base & RAG**: Semantic search over underwriting guidelines
 
-**Core principle:**
+## Features
+
+✅ **13-Phase Processing Pipeline**
+- Automated document parsing, classification, extraction, and validation
+- All phases execute automatically on document upload
+
+✅ **Prompt-Driven Architecture**
+- Output structure controlled 100% by prompts
+- No fixed schemas - fully flexible extraction
+
+✅ **RAG-Enhanced Extraction**
+- Local embeddings (sentence-transformers)
+- Vector similarity search with pgvector
+- Context-aware field extraction
+
+✅ **Production-Ready**
+- Docker Compose setup
+- PostgreSQL with pgvector
+- JWT authentication
+- Async/await throughout
+- Structured logging
+
+✅ **API-First Design**
+- 31 REST endpoints
+- OpenAPI/Swagger documentation
+- Full CRUD operations
+
+## Quick Start
+
+### Prerequisites
+
+- Docker & Docker Compose
+- Python 3.11+ (for local development)
+- PostgreSQL 16+ with pgvector (or use Docker)
+
+### Using Docker (Recommended)
+
+```bash
+# Clone repository
+git clone <repo-url>
+cd commercial_submission_ai
+
+# Copy environment file
+cp .env.docker .env
+# Edit .env and add your GROQ_API_KEY
+
+# Start all services (includes pgvector!)
+docker-compose up -d
+
+# Check health
+curl http://localhost:8000/health
+
+# View logs
+docker-compose logs -f backend
 ```
-Unstructured Documents → Trusted Extraction → Structured Data → Validation
-→ Evidence → Relevant Knowledge → Controlled AI Reasoning
-→ Explainable Insight → Human Underwriter Decision
+
+**Services started:**
+- Backend API: http://localhost:8000
+- PostgreSQL: localhost:5432
+- Redis: localhost:6379
+
+### Local Development
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Set up database
+createdb insight_ai
+psql -d insight_ai -c "CREATE EXTENSION vector;"
+
+# Copy environment file
+cp backend/.env.example backend/.env
+# Edit backend/.env with your settings
+
+# Run migrations
+cd backend
+alembic upgrade head
+
+# Start server
+uvicorn app.main:app --reload
 ```
 
-The LLM is one component of the system. It is not the entire system.
+## API Documentation
 
----
+Once running, access interactive documentation:
 
-## Key Capabilities
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+- **OpenAPI JSON**: http://localhost:8000/openapi.json
 
-| Capability | Description |
-|---|---|
-| Document Intelligence | Parse PDF, DOCX, XLSX, CSV, JPG/PNG including scanned documents |
-| Structured Extraction | LLM extracts fields into strict JSON schema with evidence mapping |
-| Deterministic Validation | Python rules detect conflicts, missing info, and invalid data |
-| RAG Retrieval | Retrieve relevant underwriting guidelines from approved knowledge base |
-| Risk Scoring | Transparent, configurable risk engine — Python calculates, LLM explains |
-| Audit Trail | Every change tracked: who, what, when, why |
-| Human Control | Underwriter reviews, overrides, and makes the final decision |
+## Testing
 
----
+```bash
+# Run all tests
+make test
 
-## Technology Stack
+# Run with coverage
+make test-cov
 
-| Layer | Technology |
-|---|---|
-| Backend | Python 3.11, FastAPI, Pydantic v2, SQLAlchemy 2.0 |
-| Database | PostgreSQL 15 + pgvector |
-| AI | Groq API (abstracted — swappable) |
-| Embeddings | sentence-transformers (local, free) |
-| OCR | Tesseract via pytesseract |
-| Frontend | React 18, TypeScript 5, Vite 5, Tailwind CSS, shadcn/ui |
-| Auth | JWT (python-jose), bcrypt |
-
----
+# Run specific test file
+cd backend
+pytest tests/test_health.py -v
+```
 
 ## Project Structure
 
 ```
 commercial_submission_ai/
-├── backend/              # FastAPI backend
-│   └── app/
-│       ├── api/          # Route handlers (thin HTTP layer)
-│       ├── core/         # Config, logging, exceptions
-│       ├── models/       # SQLAlchemy ORM models
-│       ├── schemas/      # Pydantic schemas
-│       ├── services/     # Business logic
-│       ├── repositories/ # Database access
-│       ├── ai/           # LLM abstraction layer
-│       ├── rag/          # RAG subsystem
-│       ├── ingestion/    # File validation and ingestion
-│       ├── extraction/   # Document-type extraction
-│       ├── validation/   # Deterministic validation rules
-│       ├── risk/         # Risk scoring engine
-│       ├── auth/         # JWT and RBAC
-│       └── database/     # SQLAlchemy setup
-├── frontend/             # React frontend
-│   └── src/
-│       ├── pages/        # Page components
-│       ├── features/     # Feature modules
-│       ├── services/     # API service layer
-│       ├── components/   # Reusable components
-│       └── types/        # TypeScript types
-├── prompts/              # Versioned LLM prompts
-├── data/                 # Raw, processed, output data
-├── docs/                 # Architecture and progress documentation
-├── tests/                # Automated tests
-└── .kiro/steering/       # Kiro AI guidance files
+├── backend/
+│   ├── app/
+│   │   ├── ai/              # LLM integration (Groq)
+│   │   ├── api/             # REST API routes
+│   │   ├── auth/            # JWT authentication
+│   │   ├── classification/  # Document classification
+│   │   ├── core/            # Config, logging, constants
+│   │   ├── database/        # Database setup & migrations
+│   │   ├── extraction/      # Prompt-driven field extraction
+│   │   ├── ingestion/       # Document parsing (PDF/DOCX/OCR)
+│   │   ├── models/          # SQLAlchemy ORM models
+│   │   ├── rag/             # Embeddings + vector search
+│   │   ├── repositories/    # Data access layer
+│   │   ├── schemas/         # Pydantic models
+│   │   ├── services/        # Business logic
+│   │   ├── utils/           # Utilities
+│   │   └── validation/      # Validation rules engine
+│   ├── alembic/             # Database migrations
+│   ├── tests/               # Test suite
+│   └── pytest.ini
+├── data/
+│   ├── uploads/             # User-uploaded documents
+│   ├── knowledge/           # Underwriting guidelines
+│   └── raw/strata_insurance_corpus/  # Sample data
+├── scripts/                 # Utility scripts
+├── .github/workflows/       # CI/CD pipelines
+├── docker-compose.yml       # Docker orchestration
+├── Dockerfile               # Backend container
+├── Makefile                 # Development commands
+└── requirements.txt         # Python dependencies
 ```
 
----
+## Architecture
 
-## Setup
+### Data Flow
 
-### Prerequisites
+```
+1. Upload Document
+   ↓
+2. Parse (PDF/DOCX → text)
+   ↓
+3. Classify (determine document type)
+   ↓
+4. Extract (LLM extracts fields via prompt)
+   ↓
+5. Validate (rules engine checks data)
+   ↓
+6. Store (PostgreSQL)
+   ↓
+7. Return Results (API response)
+```
 
-- Python 3.11+
-- Node.js 20+
-- PostgreSQL 15+ with pgvector extension
-- Tesseract OCR
+### RAG Pipeline
 
-### Backend
+```
+1. Admin uploads guideline document
+   ↓
+2. Chunk text (400 words, 40-word overlap)
+   ↓
+3. Generate embeddings (sentence-transformers)
+   ↓
+4. Store vectors (PostgreSQL + pgvector)
+   ↓
+5. Query → Embed → Search → Retrieve context
+   ↓
+6. Inject context into extraction prompt
+```
+
+## Configuration
+
+Key environment variables (see `.env.example`):
 
 ```bash
-cd backend
-python -m venv .venv
-.venv\Scripts\activate          # Windows
-source .venv/bin/activate       # macOS/Linux
+# LLM
+GROQ_API_KEY=your_key_here
+LLM_MODEL=openai/gpt-oss-20b
 
-pip install -r requirements.txt
+# Database
+DATABASE_URL=postgresql+asyncpg://user:pass@localhost/db
 
-# Copy and configure environment
-cp ../.env.example ../.env
-# Edit .env — fill in DATABASE_URL, SECRET_KEY, GROQ_API_KEY
+# Auth
+SECRET_KEY=generate_with_openssl_rand_hex_32
+ACCESS_TOKEN_EXPIRE_MINUTES=15
 
-# Run database migrations
-alembic upgrade head
-
-# Start backend
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# Embeddings
+EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+EMBEDDING_DIMENSION=384
 ```
 
-### Frontend
+## Deployment
+
+### Production with Docker
 
 ```bash
-cd frontend
-npm install
+# Build images
+docker-compose build
 
-# Copy frontend env (no secrets — just API URL)
-cp ../.env.example .env.local
-# Set VITE_API_BASE_URL=http://localhost:8000/api/v1
+# Start services
+docker-compose up -d
 
-npm run dev
+# Run migrations
+docker-compose exec backend alembic upgrade head
+
+# Check logs
+docker-compose logs -f
 ```
 
-### Health Check
+### Environment-Specific
 
+Create environment-specific compose files:
+
+- `docker-compose.yml` - base config
+- `docker-compose.prod.yml` - production overrides
+- `docker-compose.dev.yml` - development overrides
+
+```bash
+# Production deployment
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
-GET http://localhost:8000/api/v1/health
+
+## Makefile Commands
+
+```bash
+make help           # Show all available commands
+make dev            # Start development server
+make test           # Run tests
+make test-cov       # Run tests with coverage
+make lint           # Run linters
+make format         # Format code
+make docker-up      # Start Docker services
+make docker-logs    # View Docker logs
+make migrate        # Run database migrations
+make clean          # Clean temporary files
 ```
 
----
+## API Endpoints
 
-## Environment Variables
+### Authentication
+- `POST /api/v1/auth/login` - Login and get JWT
+- `POST /api/v1/auth/refresh` - Refresh access token
+- `GET /api/v1/auth/me` - Get current user
 
-See `.env.example` for all required variables with descriptions.
+### Submissions
+- `POST /api/v1/submissions` - Create submission
+- `GET /api/v1/submissions` - List submissions
+- `GET /api/v1/submissions/{id}` - Get submission
+- `POST /api/v1/submissions/{id}/documents` - Upload document
+- `POST /api/v1/submissions/{id}/process` - Trigger processing
 
-**Required before first run:**
-- `DATABASE_URL` — PostgreSQL connection string
-- `SECRET_KEY` — Generate: `openssl rand -hex 32`
-- `GROQ_API_KEY` — Your Groq API key (server-side only, never in frontend)
+### Knowledge Base (Admin)
+- `POST /api/v1/knowledge/upload` - Upload guideline
+- `POST /api/v1/knowledge/{id}/approve` - Approve & index
+- `POST /api/v1/knowledge/rebuild-index` - Rebuild vector index
+- `POST /api/v1/knowledge/search` - Test RAG retrieval
 
----
+## Testing with Sample Data
 
-## Security Notes
+The project includes the Strata Insurance Corpus with 79 synthetic documents:
 
-- The React frontend **never** communicates with Groq directly
-- All LLM calls happen server-side in FastAPI
-- Uploaded documents are treated as **untrusted content**
-- Prompt injection protection is implemented at the application layer
-- Every important action is audited
+```bash
+# View sample documents
+ls data/raw/strata_insurance_corpus/sample/docs/
 
----
+# Policy declarations, contracts, endorsements
+# Claim FNOL, adjuster reports, settlements
+# Identity cards with PII
+# Knowledge base (guidelines, manuals, FAQs)
+# Tabular data (loss runs, premium registers)
+```
 
-## Development Phases
+## Troubleshooting
 
-See `docs/PROJECT_PROGRESS.md` for phase-by-phase progress.
+### pgvector not found
 
----
+If using local PostgreSQL instead of Docker:
+
+```bash
+# Install pgvector extension
+# Follow: https://github.com/pgvector/pgvector#installation
+
+# Then in psql:
+CREATE EXTENSION vector;
+```
+
+### Swagger UI blank screen
+
+- Try ReDoc: http://localhost:8000/redoc
+- Check browser console for CDN blocks
+- Use Postman and import OpenAPI JSON
+
+### Tests failing
+
+```bash
+# Create test database
+createdb insight_ai_test
+psql -d insight_ai_test -c "CREATE EXTENSION vector;"
+
+# Set test environment
+export DATABASE_URL=postgresql+asyncpg://user:pass@localhost/insight_ai_test
+export APP_ENV=testing
+```
+
+## Contributing
+
+1. Create a feature branch
+2. Make your changes
+3. Run tests: `make test`
+4. Run linters: `make lint`
+5. Format code: `make format`
+6. Submit a pull request
 
 ## License
 
-See `LICENSE` file.
+[Add your license here]
 
----
+## Support
 
-> **⚠ IMPORTANT:** This system assists human underwriters. It does not make autonomous
-> underwriting decisions. Final decisions must be made by an authorized human underwriter.
+For issues and questions, please open a GitHub issue.
