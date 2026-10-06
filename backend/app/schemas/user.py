@@ -54,6 +54,27 @@ class UserCreate(InsightBaseModel):
         return v
 
 
+class UserRegister(InsightBaseModel):
+    """Request body for public user registration."""
+    email: EmailStr
+    password: str = Field(min_length=8, description="Minimum 8 characters")
+    full_name: str = Field(min_length=1, max_length=255)
+
+    @field_validator("email")
+    @classmethod
+    def normalise_email(cls, v: str) -> str:
+        return v.lower().strip()
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        if v.isdigit():
+            raise ValueError("Password cannot be all digits")
+        return v
+
+
 class UserUpdate(InsightBaseModel):
     """Request body for updating a user. All fields optional."""
     full_name: str | None = Field(default=None, max_length=255)

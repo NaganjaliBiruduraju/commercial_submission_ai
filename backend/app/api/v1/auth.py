@@ -16,14 +16,52 @@ from fastapi import APIRouter, status
 from app.api.deps import CurrentUser, DatabaseDep
 from app.core.exceptions import AuthenticationError, AuthorizationError
 from app.schemas.base import APIResponse
-from app.schemas.user import LoginRequest, RefreshRequest, TokenResponse, UserResponse
+from app.schemas.user import LoginRequest, RefreshRequest, TokenResponse, UserResponse, UserCreate, UserRegister
 from app.services.auth_service import AuthService
 from app.services.user_service import UserService
 from app.core.logging import get_logger
+from app.core.constants import UserRole
 
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+@router.post(
+    "/register",
+    response_model=APIResponse[TokenResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Register a new user",
+    description=(
+        "Create a new user account and receive JWT tokens. "
+        "Public endpoint - no authentication required. "
+        "New users are assigned USER role by default."
+    ),
+)
+async def register(
+    payload: UserRegister,
+    db: DatabaseDep,
+) -> APIResponse[TokenResponse]:
+    """Register a new user and return tokens."""
+    user_svc = UserService(db)
+    auth_svc = AuthService(db)
+    
+    # Create UserCreate with default USER role
+    user_create = UserCreate(
+        email=payload.email,
+        password=payload.password,
+        full_name=payload.full_name,
+        role=UserRole.USER,  # Default role for registration
+    )
+    
+    # Create the user (no created_by_id for self-registration)
+    user = await user_svc.create_user(user_create, created_by_id=None)
+    
+    # Automatically log them in
+    token_data = await auth_svc.login(payload.email, payload.password)
+    
+    logger.info("New user registered", user_id=str(user.id), email=payload.email)
+    return APIResponse.ok(token_data)
 
 
 @router.post(
