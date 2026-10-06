@@ -35,7 +35,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     description=(
         "Create a new user account and receive JWT tokens. "
         "Public endpoint - no authentication required. "
-        "New users are assigned USER role by default."
+        "New users are assigned REVIEWER role by default (read-only access)."
     ),
 )
 async def register(
@@ -46,12 +46,12 @@ async def register(
     user_svc = UserService(db)
     auth_svc = AuthService(db)
     
-    # Create UserCreate with default USER role
+    # Create UserCreate with default REVIEWER role (read-only)
     user_create = UserCreate(
         email=payload.email,
         password=payload.password,
         full_name=payload.full_name,
-        role=UserRole.USER,  # Default role for registration
+        role=UserRole.REVIEWER,  # Default role for registration (read-only)
     )
     
     # Create the user (no created_by_id for self-registration)
