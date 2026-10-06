@@ -49,7 +49,7 @@ services:
       - insight_network
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-  # Frontend (React/Vue - to be built)
+  # Frontend (React + TypeScript + Vite)
   frontend:
     build:
       context: ./frontend
@@ -57,17 +57,12 @@ services:
     container_name: insight_ai_frontend
     environment:
       VITE_API_BASE_URL: http://localhost:8000/api/v1
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
     ports:
-      - "5173:5173"
+      - "3000:80"
     depends_on:
       - backend
     networks:
       - insight_network
-    profiles:
-      - frontend
 
   # Redis (for caching and rate limiting)
   redis:

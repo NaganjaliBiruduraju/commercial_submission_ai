@@ -70,6 +70,7 @@ docker-compose logs -f backend
 
 **Services started:**
 - Backend API: http://localhost:8000
+- Frontend UI: http://localhost:3000 (when enabled)
 - PostgreSQL: localhost:5432
 - Redis: localhost:6379
 
@@ -190,6 +191,38 @@ commercial_submission_ai/
 ```
 
 ## Configuration
+
+### Frontend Setup
+
+The project includes a modern React + TypeScript frontend in the `frontend/` directory.
+
+**Quick Start:**
+
+```bash
+# Navigate to frontend
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+Frontend runs at: http://localhost:5173
+
+**Docker Deployment:**
+
+```bash
+# Build and start frontend with backend
+docker-compose up -d frontend
+
+# Access at http://localhost:3000
+```
+
+See [frontend/README.md](frontend/README.md) for detailed documentation.
+
+### Environment Variables
 
 Key environment variables (see `.env.example`):
 
